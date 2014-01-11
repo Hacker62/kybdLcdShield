@@ -1,0 +1,121 @@
+/*  This program will make use of a thin membrane keypad from parallax (mfr# is 27899) and keypad encoder chip by eLab 
+    p/n: PDN1144/P. I will read the parallel outputs of the encoder and covert it to the actual key being pressed on
+    the keypad. I can use this in future projects where I need a user interface for let's say a test fixture.
+    This is "Arduino C".
+*/    
+
+#include <LiquidCrystal.h>
+LiquidCrystal lcd(5,6,7,8,9,10);
+
+// none changing values
+const int dataOkPin = 11; // Goes low when data available.
+const int bitPin0 = 1; // LSB digital pin 1 on Arduino.
+const int bitPin1 = 2;
+const int bitPin2 = 3;
+const int bitPin3 = 4; // MSB
+const int ledPin = 12;
+
+
+// variables
+//bool state = 1;
+//bool lastState = 1;
+int dataArray[4]; // Array of 4 binary bits, right most being MSB.
+char keyPadNum = ' '; // Print nothing to initialize.
+
+// function prototypes
+void dispDatArray(int[]); // Array data passed on as arguments.
+int convertBinToDec(int[]); // Same here to convert 4 bit binary to decimal number.
+char getKeyPress(); // Converts decimal number to actual key pressed (i.e. decimal 1 != keypad 1).
+                      // Decimal follows pattern of bottom to top, zig zag right to left each row, 0 to 15.
+
+void setup()
+{
+  lcd.begin(16,2);
+  pinMode(dataOkPin, INPUT);
+  pinMode(bitPin0, INPUT);
+  pinMode(bitPin1, INPUT);
+  pinMode(bitPin2, INPUT);
+  pinMode(bitPin3, INPUT);
+  pinMode(ledPin, OUTPUT);
+}
+
+void loop()
+{
+  lcd.clear();
+  lcd.print("Turn on LED?");
+  lcd.setCursor(0,1);
+  lcd.print("n=0, y=1");
+  
+  delay(100);
+  
+  char key = getKeyPress();
+  
+  if (key == '1')
+  {
+    digitalWrite(ledPin, HIGH);
+  }
+  else
+  {
+    digitalWrite(ledPin, LOW);
+  }
+}
+  
+// Functions Defined ***********************************************************************
+// *****************************************************************************************
+void dispDatArray(int arg[])
+{
+  lcd.clear();
+  for(int i = 3; i >= 0; i--) // MSB prints first. This is why loop decreases i.
+  {
+    lcd.print(arg[i]);
+  }
+  delay(1000);
+  return;
+}
+// ***************************************************************************************** 
+int convertBinToDec(int arg[])  // Using doubling method from http://www.wikihow.com/Convert-from-Binary-to-Decimal
+{
+  int decNum = 0;
+  lcd.clear();
+  for (int i = 3; i >= 0; i--)
+  {
+    decNum = (decNum * 2) + arg[i]; // arg[i] are the 4 data bits from the PDN1144/P kypd encoder.
+  }
+  
+  return decNum;   
+}
+// ****************************************************************************************    
+char getKeyPress() 
+{
+  char actualKey [16] = {'D', '#', '0', '*', 'C', '9', '8', '7', 'B', '6', '5', '4', 'A', '3', '2', '1'};
+  bool lastState = HIGH;
+  bool state = HIGH;
+  
+  while (lastState == HIGH)
+  {
+     state = digitalRead(dataOkPin);
+
+     if (state == LOW)
+     {
+       dataArray[0] = digitalRead(bitPin0); // LSB
+       dataArray[1] = digitalRead(bitPin1);
+       dataArray[2] = digitalRead(bitPin2);
+       dataArray[3] = digitalRead(bitPin3); // MSB
+     
+       //dispDatArray(dataArray); // Call function to display binary. Might not need this later. 
+       int num = convertBinToDec(dataArray); // Convert binary to a decimal number.
+       keyPadNum = actualKey[num];
+      
+       lcd.clear();
+       lcd.print(keyPadNum);
+       delay(1000);
+       lastState = LOW;
+     }
+     
+   }
+    
+  return keyPadNum;
+}
+
+  
+  
